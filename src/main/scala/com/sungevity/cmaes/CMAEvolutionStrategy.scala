@@ -3,6 +3,7 @@ package com.sungevity.cmaes
 import breeze.linalg._
 import breeze.linalg.eigSym.EigSym
 import breeze.numerics._
+import breeze.stats.distributions.Rand.VariableSeed.randBasis
 import com.sungevity.cmaes
 
 /**
@@ -27,7 +28,8 @@ class CMAEvolutionStrategy private [cmaes] (val iteration: Int,
   private val (weights, mueff): (DenseVector[Double], Double) = {
     val w = DenseVector.fill(mu)(math.log(mu + 1.0)) - DenseVector((0 until mu).map(v => math.log(v + 1.0)).toArray)
     val weights: DenseVector[Double] = w / sum(w)
-    (weights, (sum(weights) * sum(weights)) / sum(weights :* weights))
+    //(weights, (sum(weights) * sum(weights)) / sum(weights :* weights))
+    (weights, (sum(weights) * sum(weights)) / sum(weights *:* weights))
   }
 
   private val cs = (mueff+2) / (n+mueff+3)
@@ -53,7 +55,8 @@ class CMAEvolutionStrategy private [cmaes] (val iteration: Int,
 
     val s = (0 until lambda) map {
       _ =>
-        xMean + sigma * b * (d :* g.samplesVector(n))
+        //xMean + sigma * b * (d :* g.samplesVector(n))
+        xMean + sigma * b * (d *:* g.samplesVector(n))
     }
 
     val distribution = DenseMatrix(new DenseVector(s.toArray).valuesIterator.map(_.valuesIterator.toArray).toSeq: _*)
@@ -79,10 +82,12 @@ class CMAEvolutionStrategy private [cmaes] (val iteration: Int,
 
     val newXMean = DenseVector.zeros[Double](n).mapPairs {
       case(idx, _) =>
-        sum(selected.map(_(idx)) :* weights)
+        //sum(selected.map(_(idx)) :* weights)
+        sum(selected.map(_(idx)) *:* weights)
     }
 
-    val invsqrtC = b * diag(d.:^(-1.0)) * b.t
+    //val invsqrtC = b * diag(d.:^(-1.0)) * b.t
+    val invsqrtC = b * diag(d^:^(-1.0)) * b.t
 
     val psN: DenseVector[Double] = (1.0-cs)*ps + sqrt(cs*(2.0-cs)*mueff) * invsqrtC * (newXMean - xMean) / sigma
 
@@ -91,7 +96,8 @@ class CMAEvolutionStrategy private [cmaes] (val iteration: Int,
     val pcN: DenseVector[Double] = (1.0-cc)*pc + hsig * sqrt(cc*(2.0-cc)*mueff) * (newXMean - xMean) / sigma
 
     val artmp: DenseVector[DenseVector[Double]] = selected.map {
-      s => (s - xMean) :/ sigma
+      //s => (s - xMean) :/ sigma
+      s => (s - xMean) /:/ sigma
     }
 
     val artmpm = DenseMatrix(artmp.valuesIterator.map(_.valuesIterator.toArray).toSeq: _*).t
@@ -106,7 +112,8 @@ class CMAEvolutionStrategy private [cmaes] (val iteration: Int,
 
     val sigmaN = sigma * math.exp((cs/damps)*((norm(psN)/chiN) - 1.0))
 
-    val psxps = sum(psN :* psN)
+    //val psxps = sum(psN :* psN)
+    val psxps = sum(psN *:* psN)
 
     val sigmaNN = sigma * math.exp(((math.sqrt(psxps) / chiN) - 1.0) * cs / damps)
 
